@@ -1,0 +1,28 @@
+{
+  "profiles": {
+    "sf-clu": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    },
+    "Remote build": {
+      "commandName": "Project",
+      "commandLineArgs": "-remote --build profile=dev"
+    },
+    "Remote rebuild": {
+      "commandName": "Project",
+      "commandLineArgs": "-remote --rebuild profile=dev"
+    },
+    "Remote deploy": {
+      "commandName": "Project",
+      "commandLineArgs": "-remote --deploy profile=dev"
+    },
+    "Remote recycle": {
+      "commandName": "Project",
+      "commandLineArgs": "-remote --recycle profile=dev"
+    },
+    "Remote status": {
+      "commandName": "Project",
+      "commandLineArgs": "-remote --status profile=dev"
+    }
+  }
+}

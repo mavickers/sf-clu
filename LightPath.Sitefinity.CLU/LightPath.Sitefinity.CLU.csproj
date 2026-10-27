@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AssemblyName>sf-clu</AssemblyName>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>sf-clu</ToolCommandName>
+        <PackageId>LightPath.Sitefinity.CLU</PackageId>
+        <Version>0.0.0-dev</Version>
+        <Authors>mavickers</Authors>
+        <Company>LightPath Solutions, LLC</Company>
+        <Copyright>2026 LightPath Solutions, LLC</Copyright>
+        <Description>Command-line utility for Progress Sitefinity CMS projects: builds and serves a Sitefinity site on a Windows build host over SSH, and generates keys and SiteSync settings.</Description>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/mavickers/sf-clu</PackageProjectUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>sitefinity;cli;dotnet-tool</PackageTags>
+        <RepositoryUrl>https://github.com/mavickers/sf-clu</RepositoryUrl>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="..\README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="LightPath.Cargo" Version="3.1.5" />
+        <PackageReference Include="LightPath.Factor" Version="0.0.0.3" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="NLog" Version="5.5.0" />
+        <PackageReference Include="System.CommandLine" Version="2.0.14" />
+    </ItemGroup>
+
+</Project>
