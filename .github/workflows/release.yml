@@ -1,18 +1,19 @@
 name: Release
 
-# A pushed v* tag builds both binaries and the dotnet tool package, creates the
-# GitHub Release and pushes the package to nuget.org. A manual run builds and
-# uploads workflow artifacts only: no release, no package push.
+# Every push to main (a merged PR) builds both binaries and the dotnet tool
+# package, pushes the package to nuget.org and creates the tag and GitHub
+# Release. Nerdbank.GitVersioning sets the version from version.json. A manual
+# run from another branch builds and uploads workflow artifacts only.
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Serialize release runs so two tags can't race on the nuget push or the
+# Serialize release runs so two merges can't race on the nuget push or the
 # GitHub Release creation.
 concurrency:
   group: release
@@ -38,31 +39,34 @@ jobs:
         shell: bash
 
     steps:
+      # Nerdbank.GitVersioning needs the full history to compute the version.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
 
-      - name: Compute version
-        run: |
-          if [ "$GITHUB_REF_TYPE" = "tag" ]; then echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"; else echo "VERSION=0.0.0-dev" >> "$GITHUB_ENV"; fi
+      - name: Compute version (Nerdbank.GitVersioning)
+        id: nbgv
+        uses: dotnet/nbgv@705dad19ab067f12f4e9eeaa60812e01edef5d25 # v0.5.2
 
       # ContinuousIntegrationBuild maps source paths to /_/, so no runner path
       # ends up in the binary or the PDB.
       - name: Publish
-        run: dotnet publish "$PROJECT" -p:PublishProfile=${{ matrix.rid }} -p:Version=$VERSION -p:ContinuousIntegrationBuild=true
+        run: dotnet publish "$PROJECT" -p:PublishProfile=${{ matrix.rid }} -p:ContinuousIntegrationBuild=true
 
       # Signing goes between Publish and Archive when it is added.
 
       - name: Archive (macOS)
         if: runner.os == 'macOS'
-        run: tar -czf "sf-clu-$VERSION-${{ matrix.rid }}.tar.gz" -C "LightPath.Sitefinity.CLU/publish/${{ matrix.rid }}" sf-clu
+        run: tar -czf "sf-clu-${{ steps.nbgv.outputs.NuGetPackageVersion }}-${{ matrix.rid }}.tar.gz" -C "LightPath.Sitefinity.CLU/publish/${{ matrix.rid }}" sf-clu
 
       - name: Archive (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: Compress-Archive -Path "LightPath.Sitefinity.CLU/publish/${{ matrix.rid }}/sf-clu.exe" -DestinationPath "sf-clu-$env:VERSION-${{ matrix.rid }}.zip"
+        run: Compress-Archive -Path "LightPath.Sitefinity.CLU/publish/${{ matrix.rid }}/sf-clu.exe" -DestinationPath "sf-clu-${{ steps.nbgv.outputs.NuGetPackageVersion }}-${{ matrix.rid }}.zip"
 
       # The archive keeps the executable bit; an upload-artifact zip of the bare binary would not.
       - uses: actions/upload-artifact@v4
@@ -73,20 +77,24 @@ jobs:
 
   pack:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.nbgv.outputs.NuGetPackageVersion }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
 
-      - name: Compute version
-        run: |
-          if [ "$GITHUB_REF_TYPE" = "tag" ]; then echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"; else echo "VERSION=0.0.0-dev" >> "$GITHUB_ENV"; fi
+      - name: Compute version (Nerdbank.GitVersioning)
+        id: nbgv
+        uses: dotnet/nbgv@705dad19ab067f12f4e9eeaa60812e01edef5d25 # v0.5.2
 
       - name: Pack
-        run: dotnet pack "$PROJECT" --configuration Release -p:Version=$VERSION -p:ContinuousIntegrationBuild=true --output ./nupkg
+        run: dotnet pack "$PROJECT" --configuration Release -p:ContinuousIntegrationBuild=true --output ./nupkg
 
       - uses: actions/upload-artifact@v4
         with:
@@ -95,12 +103,16 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    # workflow_dispatch has no branch filter; this keeps a manual run from
+    # another branch from publishing a -g<sha> prerelease.
+    if: github.ref == 'refs/heads/main'
     needs: [publish, pack]
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
+    env:
+      VERSION: ${{ needs.pack.outputs.version }}
 
     steps:
       - uses: actions/download-artifact@v4
@@ -111,12 +123,6 @@ jobs:
       - name: Write SHA256SUMS
         working-directory: assets
         run: sha256sum sf-clu-* > SHA256SUMS
-
-      - uses: softprops/action-gh-release@v3
-        with:
-          files: |
-            assets/sf-clu-*
-            assets/SHA256SUMS
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -132,8 +138,26 @@ jobs:
         with:
           user: mavickers
 
+      # --skip-duplicate lets a rerun of a failed run get past a package it already pushed.
       - name: Push to NuGet
         run: >
           dotnet nuget push assets/*.nupkg
           --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
           --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      # Creating the release also creates the tag. A rerun replaces the assets of an existing release.
+      - name: Tag and create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$VERSION" assets/sf-clu-* assets/SHA256SUMS --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$VERSION" assets/sf-clu-* assets/SHA256SUMS \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$VERSION" \
+              --generate-notes \
+              --latest
+          fi

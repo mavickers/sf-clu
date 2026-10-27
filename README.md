@@ -324,6 +324,26 @@ Build with `dotnet build` at the repository root. The binary is `LightPath.Sitef
 dotnet publish LightPath.Sitefinity.CLU -p:PublishProfile=osx-arm64
 ```
 
+## Releasing
+
+Work happens on `develop`. A pull request from `develop` into `main` releases: every merge to `main` publishes a new version. There is no manual publish step and no tag to push.
+
+`.github/workflows/ci.yml` builds and packs on every push to `develop` and every pull request into `develop` or `main`. It publishes nothing. A pull request into `main` cannot be merged until this check passes.
+
+`.github/workflows/release.yml` runs on each push to `main`:
+
+1. Nerdbank.GitVersioning computes the version. The major and minor parts come from the `version` field in `version.json`. The patch part is the number of commits since that field last changed, so patch numbers can skip values. Only builds from `main` get a clean version number; builds from other branches get a `-g<sha>` prerelease suffix.
+2. The publish profiles create the two self-contained archives, and `dotnet pack` creates the `dotnet tool` package.
+3. `NuGet/login` exchanges the workflow's GitHub OIDC token for a nuget.org key that is valid for one hour. This is NuGet Trusted Publishing; the repository holds no NuGet API key.
+4. `dotnet nuget push` uploads the package. A version that already exists on nuget.org is skipped, so a rerun of a failed run does not fail on it.
+5. A GitHub Release named with the version (for example `1.0.3`) is created with both archives and `SHA256SUMS`. Creating the release also creates the git tag.
+
+A manual run of `release.yml` from another branch builds the archives and the package as workflow artifacts and publishes nothing. Use it before merging a change to the publish settings, because `ci.yml` does not run the self-contained builds.
+
+The Trusted Publishing policy on nuget.org is bound to the repository owner, the repository name, the workflow file name and the package ID. Renaming the repository or `release.yml` stops the push until the policy is changed to match.
+
+To change the major or minor version, edit the `version` field in `version.json` in the same pull request as the change that needs it.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

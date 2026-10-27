@@ -12,7 +12,6 @@
         <PackAsTool>true</PackAsTool>
         <ToolCommandName>sf-clu</ToolCommandName>
         <PackageId>LightPath.Sitefinity.CLU</PackageId>
-        <Version>0.0.0-dev</Version>
         <Authors>mavickers</Authors>
         <Company>LightPath Solutions, LLC</Company>
         <Copyright>2026 LightPath Solutions, LLC</Copyright>
@@ -31,6 +30,10 @@
     <ItemGroup>
         <PackageReference Include="LightPath.Cargo" Version="3.1.5" />
         <PackageReference Include="LightPath.Factor" Version="0.0.0.3" />
+        <PackageReference Include="Nerdbank.GitVersioning" Version="3.9.50">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
         <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="NLog" Version="5.5.0" />
         <PackageReference Include="System.CommandLine" Version="2.0.14" />
