@@ -143,7 +143,7 @@ Key names are not case sensitive. A value is everything after the first `=`. Bas
 
 The first saved profile becomes the default. `default=true` on `--init` or `--profile` makes that profile the default. An empty value (`msbuild=`) clears an optional key. An unknown key is an error that lists the valid keys.
 
-Every job prints the profile name and the solution in its first line. A job started from inside another clone still builds the profile's solution.
+Every job first prints the profile name, the full path of the solution and the web project, each on its own line (`Profile:`, `Solution:`, `Project:`). A job started from inside another clone still builds the profile's solution.
 
 A profile without `solution` stops every job with a usage error. Add the key with `--profile`; the profile does not have to be created again:
 
