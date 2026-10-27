@@ -28,7 +28,7 @@ namespace LightPath.Sitefinity.CLU
         {
             if (context.Source.HealthPath == null)
             {
-                WriteLine("Health: not configured (the web project sets no sf:HealthCheckApiEndpoint)");
+                WriteLine("Healthy: not configured (the web project sets no sf:HealthCheckApiEndpoint)");
 
                 return true;
             }
@@ -47,7 +47,7 @@ namespace LightPath.Sitefinity.CLU
 
                 if (response.StatusCode != HttpStatusCode.OK)
                 {
-                    WriteError($"Health: HTTP {(int)response.StatusCode} from {uri} in {elapsed}");
+                    WriteError($"Healthy: HTTP {(int)response.StatusCode} from {uri} in {elapsed}");
 
                     return false;
                 }
@@ -58,7 +58,7 @@ namespace LightPath.Sitefinity.CLU
 
                 if (!document.RootElement.TryGetProperty("Healthy", out var verdict) || verdict.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
                 {
-                    WriteError($"Health: HTTP 200 from {uri} without a verdict");
+                    WriteError($"Healthy: HTTP 200 from {uri} without a verdict");
 
                     return false;
                 }
@@ -66,7 +66,7 @@ namespace LightPath.Sitefinity.CLU
                 var healthy = verdict.ValueKind == JsonValueKind.True;
                 var failing = document.RootElement.TryGetProperty("Checks", out var checks) ? checks.EnumerateArray().Where(check => check.TryGetProperty("Passed", out var passed) && passed.ValueKind == JsonValueKind.False).ToList() : new List<JsonElement>();
 
-                WriteLine($"Health: Healthy={healthy} (HTTP 200 in {elapsed})");
+                WriteLine($"Healthy: {healthy} (HTTP 200 in {elapsed})");
 
                 foreach (var check in failing) WriteLine($"  failed: {Text(check, "Operation")} - {Text(check, "Message")}");
 
@@ -74,7 +74,7 @@ namespace LightPath.Sitefinity.CLU
             }
             catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException or InvalidOperationException)
             {
-                WriteError($"Health: {uri} gave no verdict: {exception.Message}");
+                WriteError($"Healthy: {uri} gave no verdict: {exception.Message}");
 
                 return false;
             }
