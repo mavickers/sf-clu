@@ -1,0 +1,139 @@
+name: Release
+
+# A pushed v* tag builds both binaries and the dotnet tool package, creates the
+# GitHub Release and pushes the package to nuget.org. A manual run builds and
+# uploads workflow artifacts only: no release, no package push.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Serialize release runs so two tags can't race on the nuget push or the
+# GitHub Release creation.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  PROJECT: LightPath.Sitefinity.CLU/LightPath.Sitefinity.CLU.csproj
+
+jobs:
+  publish:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-arm64
+            os: macos-15
+          - rid: win-x64
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compute version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"; else echo "VERSION=0.0.0-dev" >> "$GITHUB_ENV"; fi
+
+      # ContinuousIntegrationBuild maps source paths to /_/, so no runner path
+      # ends up in the binary or the PDB.
+      - name: Publish
+        run: dotnet publish "$PROJECT" -p:PublishProfile=${{ matrix.rid }} -p:Version=$VERSION -p:ContinuousIntegrationBuild=true
+
+      # Signing goes between Publish and Archive when it is added.
+
+      - name: Archive (macOS)
+        if: runner.os == 'macOS'
+        run: tar -czf "sf-clu-$VERSION-${{ matrix.rid }}.tar.gz" -C "LightPath.Sitefinity.CLU/publish/${{ matrix.rid }}" sf-clu
+
+      - name: Archive (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path "LightPath.Sitefinity.CLU/publish/${{ matrix.rid }}/sf-clu.exe" -DestinationPath "sf-clu-$env:VERSION-${{ matrix.rid }}.zip"
+
+      # The archive keeps the executable bit; an upload-artifact zip of the bare binary would not.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archive-${{ matrix.rid }}
+          path: sf-clu-*
+          if-no-files-found: error
+
+  pack:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compute version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"; else echo "VERSION=0.0.0-dev" >> "$GITHUB_ENV"; fi
+
+      - name: Pack
+        run: dotnet pack "$PROJECT" --configuration Release -p:Version=$VERSION -p:ContinuousIntegrationBuild=true --output ./nupkg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: nupkg/*.nupkg
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [publish, pack]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Write SHA256SUMS
+        working-directory: assets
+        run: sha256sum sf-clu-* > SHA256SUMS
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            assets/sf-clu-*
+            assets/SHA256SUMS
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Trusted Publishing: exchanges the GitHub OIDC token for a nuget.org key
+      # that is valid for 1 hour and scoped by the policy on nuget.org (owner
+      # mavickers, repo sf-clu, workflow release.yml). The key is issued once
+      # per token, so this step sits directly before the push.
+      - name: NuGet login (Trusted Publishing)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Push to NuGet
+        run: >
+          dotnet nuget push assets/*.nupkg
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
