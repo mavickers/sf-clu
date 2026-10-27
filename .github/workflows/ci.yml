@@ -1,0 +1,43 @@
+name: CI
+
+# Builds and packs on every push to develop and every PR into develop or main.
+# Publishes nothing. The branch rule on main requires the build job by name.
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  PROJECT: LightPath.Sitefinity.CLU/LightPath.Sitefinity.CLU.csproj
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Nerdbank.GitVersioning needs the full history to compute the version.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build LightPath.Sitefinity.CLU.sln --configuration Release
+
+      - name: Pack
+        run: dotnet pack "$PROJECT" --configuration Release --no-build --output ./nupkg

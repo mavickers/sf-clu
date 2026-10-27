@@ -34,7 +34,9 @@ namespace LightPath.Sitefinity.CLU
 
             if (context.Job == JobDeploy && context.Source.SecretsId == null) throw Usage($"--deploy needs a <UserSecretsId> in project {context.Source.ProjectName}, because it names the folder of secrets.xml");
 
-            WriteLine($"Profile '{name}': {context.Source.Solution} in {context.RepoRoot}, project {context.Source.ProjectName}");
+            WriteLine($"Profile: {name}");
+            WriteLine($"Solution: {Path.GetFullPath(profile.Solution!)}");
+            WriteLine($"Project: {context.Source.ProjectName}");
 
             return context;
         }
