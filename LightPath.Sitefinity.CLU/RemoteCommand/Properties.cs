@@ -6,9 +6,11 @@ namespace LightPath.Sitefinity.CLU
 {
     public static partial class RemoteCommand
     {
+        private const string ActionAddSecret = "--add-secret";
         private const string ActionInit = "--init";
         private const string ActionProfile = "--profile";
         private const string ActionProfiles = "--profiles";
+        private const string ActionRemoveSecret = "--remove-secret";
         private const string ActionSecrets = "--add-secret/--remove-secret";
         private const string JobBuild = "--build";
         private const string JobDeploy = "--deploy";
@@ -48,8 +50,8 @@ namespace LightPath.Sitefinity.CLU
             public static readonly Option<bool> InitOption = Marker(ActionInit, "Create a profile after checking the solution and the host: name=<name> solution=<.sln path> [default=true] and profile keys");
             public static readonly Option<bool> ProfileOption = Marker(ActionProfile, "Update a profile, with the same checks as --init: name=<name> [default=true] and profile keys");
             public static readonly Option<bool> ProfilesOption = Marker(ActionProfiles, "List the profiles and mark the default");
-            public static readonly Option<bool> AddSecretOption = Marker("--add-secret", "Add or replace secrets.xml overrides: profile=<name> key=<entry> value=<value> [key=... value=...]");
-            public static readonly Option<bool> RemoveSecretOption = Marker("--remove-secret", "Remove secrets.xml overrides: profile=<name> key=<entry> [key=...]");
+            public static readonly Option<bool> AddSecretOption = Marker(ActionAddSecret, "Add or replace secrets.xml overrides: profile=<name> key=<entry> value=<value> [key=... value=...]");
+            public static readonly Option<bool> RemoveSecretOption = Marker(ActionRemoveSecret, "Remove secrets.xml overrides: profile=<name> key=<entry> [key=...]");
             public static readonly Option<bool> VerboseOption = Marker("--verbose", "Print each command sent to the host (never a script) and each step's time");
             public static readonly Argument<List<string>> PropertiesArgument = new("key=value")
             {

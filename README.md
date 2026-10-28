@@ -39,6 +39,8 @@ The source flows in one direction only, from the client to the host. A change ma
 
 The tool can run from any folder. The profile names the solution, so the current folder has no effect on a run.
 
+`sf-clu -remote -h` shows an overview of the jobs and commands. `sf-clu -remote <job or command> -h` shows the page of one of them, with its keys, its steps or checks, its exit codes and examples. `sf-clu -remote` alone, and `--init`, `--profile`, `--add-secret` or `--remove-secret` without keys, show the same pages.
+
 ### Requirements
 
 Client:

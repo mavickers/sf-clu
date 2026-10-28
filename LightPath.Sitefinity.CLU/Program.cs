@@ -7,13 +7,16 @@ namespace LightPath.Sitefinity.CLU
 {
     public class Program
     {
+        private const string ToolName = "Sitefinity Command Line Utility (CLU)";
+
         public static async Task<int> Main(string[] args)
         {
             Console.WriteLine();
 
-            var rootCommand = new RootCommand("Sitefinity Command Line Utility (CLU)");
+            var rootCommand = new RootCommand("Command Line Utilities for managing various Sitefinity functions and activities.");
 
             if (!args.Any()) args = new[] { "-h" };
+            if (RemoteCommand.IsBareCommand(args)) args = args.Append("-h").ToArray();
 
             rootCommand.SetAction(_ => 1);
 
@@ -28,7 +31,7 @@ namespace LightPath.Sitefinity.CLU
             return await rootCommand.Parse(args).InvokeAsync();
         }
 
-        /// <summary>Prints the tool version above the help text of every command.</summary>
+        /// <summary>Prints the tool name and version above the help text of every command.</summary>
         private class VersionedHelpAction(HelpAction help) : SynchronousCommandLineAction
         {
             public override bool ClearsParseErrors => true;
@@ -37,8 +40,10 @@ namespace LightPath.Sitefinity.CLU
             {
                 var version = typeof(Program).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0];
 
-                parseResult.InvocationConfiguration.Output.WriteLine($"sf-clu {version}");
+                parseResult.InvocationConfiguration.Output.WriteLine($"{ToolName} {version}");
                 parseResult.InvocationConfiguration.Output.WriteLine();
+
+                if (parseResult.CommandResult.Command == RemoteCommand.Properties.RemoteCmd) return RemoteCommand.WriteHelp(parseResult, parseResult.InvocationConfiguration.Output);
 
                 return help.Invoke(parseResult);
             }
