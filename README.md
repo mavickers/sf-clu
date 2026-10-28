@@ -39,6 +39,8 @@ The source flows in one direction only, from the client to the host. A change ma
 
 The tool can run from any folder. The profile names the solution, so the current folder has no effect on a run.
 
+`sf-clu -remote -h` shows an overview of the jobs and commands. `sf-clu -remote <job or command> -h` shows the page of one of them, with its keys, its steps or checks, its exit codes and examples. `sf-clu -remote` alone, and `--init`, `--profile`, `--add-secret` or `--remove-secret` without keys, show the same pages.
+
 ### Requirements
 
 Client:
@@ -232,7 +234,7 @@ Both jobs run the host check without the run lock, then the pool job:
 - `--recycle` recycles the pool if its state is `Started`. If the pool is not started, it prints the `appcmd start apppool` command and exits with code 1.
 - `--status` prints the pool state and requests the health path. It expects HTTP 200, reads the `Healthy` value in the response body and lists the failed checks. A site that sets `sf:HealthCheckUnhealthyStatusCode` to 200 answers 200 also when it is unhealthy, so the body is the verdict. Any other status code counts as no verdict. The exit code is 1 when the site is unhealthy, gives no verdict, or the pool is not started.
 
-When the web project sets no health path, `--status` prints `Health: not configured`, and health has no effect on the exit code. The health service also needs `healthCheckConfig enabled="True"` in Sitefinity's `SystemConfig.config`. The tool does not read that file, so a health path with the service turned off gives no verdict and exit code 1.
+When the web project sets no health path, `--status` prints `Healthy: not configured`, and health has no effect on the exit code. The health service also needs `healthCheckConfig enabled="True"` in Sitefinity's `SystemConfig.config`. The tool does not read that file, so a health path with the service turned off gives no verdict and exit code 1.
 
 Both jobs also report a running job (the holder of the run lock) and an existing `app_offline.htm`.
 
